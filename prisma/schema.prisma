@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // DIRECT_URL = Supabase session-mode pooler (port 5432) used by prisma migrate deploy
+  directUrl = env("DIRECT_URL")
+}
+
+model Search {
+  id           String   @id @default(cuid())
+  userId       String
+  userEmail    String   @default("")
+  title        String
+  description  String   @db.Text
+  status       String   @default("pending") // pending | searching | generating | completed | failed
+  progress     Int      @default(0)
+  aiModel      String   @default("groq-llama-3.3-70b")
+  errorMessage  String?  // Stores the actual API or search failure reason
+  progressLabel String?  // Live step label sent to frontend via SSE (cleared on completion)
+  jurisdiction  String   @default("US") // US | IN | GLOBAL
+  queryLog      String?  @db.Text // JSON array of { source, query } objects
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  report       Report?
+}
+
+model UserOverride {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  userEmail  String   @default("")
+  dailyLimit Int      @default(-1) // -1 = unlimited
+  note       String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Report {
+  id                  String   @id @default(cuid())
+  searchId            String   @unique
+  search              Search   @relation(fields: [searchId], references: [id])
+  patentabilityMd     String   @db.Text
+  clientReportMd      String   @db.Text
+  referencesFound     Int      @default(0)
+  patentabilityRating String   @default("PENDING")
+  createdAt           DateTime @default(now())
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  adminId      String
+  adminEmail   String   @default("")
+  action       String   // set-limit | delete-limit | view-stats | delete-search
+  targetUserId String?
+  details      String?  @db.Text
+  createdAt    DateTime @default(now())
+}
