@@ -20,6 +20,7 @@ import { enrichWithSnippets } from './snippet-extractor';
 import { findObviousnessPairs, formatPairsForPrompt } from '@/lib/analysis/obviousness-combiner';
 import type { AIModel } from '@/lib/llm/providers';
 import { isEmbeddingAvailable, generateEmbedding, generateEmbeddings, computeVectorScores } from './embeddings';
+import { searchEPOOPS, isEPOOPSAvailable } from './epo-ops';
 
 export type { WebSearchProvider };
 
@@ -307,9 +308,22 @@ export async function runBackgroundSearch(
         queryLog.push({ source: `PatentsView CPC ${code}`, query: `${synonymQuery} [CPC:${code}]` });
       });
     }
+    if (isEPOOPSAvailable()) {
+      queryLog.push(
+        { source: 'EPO OPS (keywords)', query: `ta any "${keywordQuery}"` },
+        { source: 'EPO OPS (novel)', query: `ta any "${novelQuery}"` },
+        { source: 'EPO OPS (claims+CPC)', query: cpcCodes[0] ? `(ta any "${claimQuery}") AND (ic any "${cpcCodes[0]}")` : `ta any "${claimQuery}"` },
+        { source: 'EPO OPS (synonyms)', query: `ta any "${synonymQuery}"` },
+      );
+    }
 
-    // ── Step 3: 14 parallel patent + academic API searches ───────────────────
-    await updateSearchProgress(searchId, 28, undefined, `Searching PatentsView, Google Patents & ${cpcCodes.length} CPC codes in parallel...`);
+    // ── Step 3: parallel patent + academic API searches ─────────────────────
+    const epoActive = isEPOOPSAvailable();
+    const totalSources = 14 + (epoActive ? 4 : 0);
+    await updateSearchProgress(
+      searchId, 28, undefined,
+      `Searching ${totalSources} sources in parallel: PatentsView${epoActive ? ', EPO OPS' : ''}, Google Patents, USPTO & more...`
+    );
 
     const directResults = await Promise.allSettled([
       searchPatentsView(keywordQuery, cpcCodes[0], cpcCodes[0] ? `PatentsView - ${cpcCodes[0]}` : 'PatentsView - keywords'),
@@ -326,6 +340,13 @@ export async function runBackgroundSearch(
       searchSemanticScholar(keywordQuery),
       searchOpenAlex(keywordQuery),
       searchOpenAlex(claimQuery),
+      // EPO OPS — structured API search across EP, WO, US, CN, JP (worldwide coverage)
+      ...(epoActive ? [
+        searchEPOOPS(keywordQuery, undefined, 'EPO OPS - keywords'),
+        searchEPOOPS(novelQuery, undefined, 'EPO OPS - novel'),
+        searchEPOOPS(claimQuery, cpcCodes[0], 'EPO OPS - claims+CPC'),
+        searchEPOOPS(synonymQuery, undefined, 'EPO OPS - synonyms'),
+      ] : []),
     ]);
 
     await updateSearchProgress(searchId, 50, undefined, 'Searching EPO Espacenet, WIPO PatentScope & running web searches...');
@@ -343,10 +364,19 @@ export async function runBackgroundSearch(
       fetchBackwardCitations(topForCitations, 3),
     ]);
 
+    // EPO OPS step-4 bonus: additional jurisdiction-specific queries using
+    // claim terms + second CPC code, run after directResults to avoid quota clash
+    let epoStep4: UnifiedResult[] = [];
+    if (epoActive && cpcCodes[1]) {
+      try {
+        epoStep4 = await searchEPOOPS(novelQuery, cpcCodes[1], `EPO OPS - novel+${cpcCodes[1]}`);
+      } catch { /* non-fatal */ }
+    }
+
     await updateSearchProgress(searchId, 60, undefined, 'Consolidating and ranking all results...');
 
     // ── Step 5: Consolidate, dedup, rank ──────────────────────────────────────
-    const allResultsRaw: UnifiedResult[] = [...directFlat];
+    const allResultsRaw: UnifiedResult[] = [...directFlat, ...epoStep4];
     for (const settled of [webBatch1, webBatch2]) {
       if (settled.status === 'fulfilled') allResultsRaw.push(...settled.value);
     }
