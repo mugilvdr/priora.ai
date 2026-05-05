@@ -136,7 +136,7 @@ function parseCPCCodes(xml: string): string[] {
     if (!codes.includes(code)) codes.push(code);
   }
 
-  return [...new Set(codes)].slice(0, 6);
+  return Array.from(new Set(codes)).slice(0, 6);
 }
 
 function decodeEntities(text: string): string {
