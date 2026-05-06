@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   SignInButton,
   SignUpButton,
@@ -19,12 +20,7 @@ export default async function LandingPage() {
       <nav className="border-b border-[#1e293b] px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">P</span>
-            </div>
-            <span className="font-bold text-xl text-white tracking-tight">
-              Priora.AI
-            </span>
+            <Image src="/priovex-logo.png" alt="PrioVex" width={130} height={32} className="object-contain" />
           </div>
           <div className="flex items-center gap-3">
             <Link
@@ -125,10 +121,7 @@ export default async function LandingPage() {
       <footer className="border-t border-[#1e293b] px-6 py-6">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
-              <span className="text-white font-bold text-xs">P</span>
-            </div>
-            <span className="font-semibold text-white text-sm">Priora.AI</span>
+            <Image src="/priovex-logo.png" alt="PrioVex" width={90} height={24} className="object-contain" />
           </div>
           <div className="flex items-center gap-4 text-slate-500 text-sm">
             <span>Professional IP intelligence for inventors & attorneys</span>

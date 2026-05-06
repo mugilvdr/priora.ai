@@ -1,55 +1,95 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
 interface ReportViewerProps {
   patentabilityMd: string;
   clientReportMd: string;
+  patentSourcesMd: string;
+  nplSourcesMd: string;
   searchId: string;
 }
 
-type TabType = 'patentability' | 'client';
+type TabType = 'patent-sources' | 'npl-sources' | 'patentability' | 'client';
 
 export default function ReportViewer({
   patentabilityMd,
   clientReportMd,
+  patentSourcesMd,
+  nplSourcesMd,
   searchId,
 }: ReportViewerProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('patentability');
+  const [activeTab, setActiveTab] = useState<TabType>('patent-sources');
 
-  const tabs: { id: TabType; label: string; description: string }[] = [
+  const tabs: { id: TabType; label: string; description: string; downloadType?: string }[] = [
+    {
+      id: 'patent-sources',
+      label: 'Patent Prior Art',
+      description: 'Patent results from USPTO, EPO, WIPO, PatentsView and other patent databases',
+    },
+    {
+      id: 'npl-sources',
+      label: 'Non-Patent Literature',
+      description: 'Academic papers, articles and technical references from arXiv, Semantic Scholar, OpenAlex',
+    },
     {
       id: 'patentability',
       label: 'Patentability Report',
       description: 'Full prior art analysis with comparison tables and observations',
+      downloadType: 'patentability',
     },
     {
       id: 'client',
       label: 'Client Report',
       description: 'Client-ready supplementary search report with claim strategy',
+      downloadType: 'client',
     },
   ];
 
-  const currentContent = activeTab === 'patentability' ? patentabilityMd : clientReportMd;
+  const contentMap: Record<TabType, string> = {
+    'patent-sources': patentSourcesMd || '_This search was completed before patent/NPL tab tracking was added. Re-run the search to see split results._',
+    'npl-sources': nplSourcesMd || '_This search was completed before patent/NPL tab tracking was added. Re-run the search to see split results._',
+    patentability: patentabilityMd,
+    client: clientReportMd,
+  };
+
+  const currentTab = tabs.find((t) => t.id === activeTab)!;
 
   return (
     <div className="bg-[#111827] border border-[#1e293b] rounded-2xl overflow-hidden">
       {/* Tab Header */}
       <div className="border-b border-[#1e293b] px-6 pt-4">
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-5 py-2.5 text-sm font-medium rounded-t-lg transition-colors -mb-px ${
+              className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors -mb-px ${
                 activeTab === tab.id
                   ? 'bg-[#0a0f1e] border border-[#1e293b] border-b-[#0a0f1e] text-white'
                   : 'text-slate-400 hover:text-white hover:bg-[#1e293b] rounded-lg'
               }`}
             >
-              {tab.label}
+              {tab.id === 'patent-sources' && (
+                <span className="inline-flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  {tab.label}
+                </span>
+              )}
+              {tab.id === 'npl-sources' && (
+                <span className="inline-flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                  {tab.label}
+                </span>
+              )}
+              {tab.id === 'patentability' && tab.label}
+              {tab.id === 'client' && tab.label}
             </button>
           ))}
         </div>
@@ -57,39 +97,29 @@ export default function ReportViewer({
 
       {/* Tab Description */}
       <div className="px-6 py-3 bg-[#0d1424] border-b border-[#1e293b] flex items-center justify-between">
-        <p className="text-slate-400 text-sm">
-          {tabs.find((t) => t.id === activeTab)?.description}
-        </p>
+        <p className="text-slate-400 text-sm">{currentTab.description}</p>
         <div className="flex items-center gap-3">
           <button
             onClick={() => window.print()}
             className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
-            Download PDF
+            Print
           </button>
-          <a
-            href={`/api/reports/${searchId}/download?type=${activeTab}`}
-            download
-            className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-              />
-            </svg>
-            Download .md
-          </a>
+          {currentTab.downloadType && (
+            <a
+              href={`/api/reports/${searchId}/download?type=${currentTab.downloadType}`}
+              download
+              className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download .md
+            </a>
+          )}
         </div>
       </div>
 
@@ -192,7 +222,7 @@ export default function ReportViewer({
               ),
             }}
           >
-            {currentContent}
+            {contentMap[activeTab]}
           </ReactMarkdown>
         </div>
       </div>

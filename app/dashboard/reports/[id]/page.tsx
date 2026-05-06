@@ -110,6 +110,8 @@ export default async function ReportPage({ params }: ReportPageProps) {
       <ReportViewer
         patentabilityMd={search.report.patentabilityMd}
         clientReportMd={search.report.clientReportMd}
+        patentSourcesMd={search.report.patentSourcesMd ?? ''}
+        nplSourcesMd={search.report.nplSourcesMd ?? ''}
         searchId={params.id}
       />
     </div>

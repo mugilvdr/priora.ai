@@ -18,7 +18,7 @@ interface SearchFormProps {
 
 const EXAMPLE_DESCRIPTION = `A wireless charging system for electric vehicles that uses resonant inductive coupling to transfer energy at distances up to 30cm. The system includes an intelligent alignment correction mechanism that automatically adjusts the position of the receiving coil using magnetic field sensors and a servo motor array. A novel feature is the dynamic frequency modulation algorithm that optimizes power transfer efficiency based on real-time load conditions and coil misalignment, achieving over 95% efficiency. The system also incorporates bidirectional communication between the charging pad and vehicle to negotiate power levels and monitor battery state.`;
 
-const STORAGE_KEY = 'priora_ai_settings';
+const STORAGE_KEY = 'priovex_settings';
 
 interface SavedSettings {
   aiModel: AIModel;

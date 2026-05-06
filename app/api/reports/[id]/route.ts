@@ -34,6 +34,8 @@ export async function GET(
       ? {
           patentabilityMd: search.report.patentabilityMd,
           clientReportMd: search.report.clientReportMd,
+          patentSourcesMd: search.report.patentSourcesMd ?? '',
+          nplSourcesMd: search.report.nplSourcesMd ?? '',
           referencesFound: search.report.referencesFound,
           patentabilityRating: search.report.patentabilityRating,
         }

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { SignUpButton } from '@clerk/nextjs';
 
 const plans = [
@@ -57,10 +58,7 @@ export default function PricingPage() {
       <nav className="border-b border-[#1e293b] px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">P</span>
-            </div>
-            <span className="font-bold text-xl text-white tracking-tight">Priora.AI</span>
+            <Image src="/priovex-logo.png" alt="PrioVex" width={130} height={32} className="object-contain" />
           </Link>
           <Link href="/" className="text-sm text-slate-400 hover:text-white transition-colors">
             ← Back
@@ -124,7 +122,7 @@ export default function PricingPage() {
                   </SignUpButton>
                 ) : (
                   <a
-                    href="mailto:mugilvannan@myipstrategy.com?subject=Priora.AI Enterprise"
+                    href="mailto:mugilvannan@myipstrategy.com?subject=PrioVex Enterprise"
                     className="block w-full py-2.5 rounded-xl font-semibold text-sm bg-[#1e293b] hover:bg-[#273448] text-white border border-[#334155] transition-colors text-center"
                   >
                     {plan.cta}
@@ -141,7 +139,7 @@ export default function PricingPage() {
       </main>
 
       <footer className="border-t border-[#1e293b] px-6 py-6 text-center text-slate-500 text-sm">
-        © {new Date().getFullYear()} Priora.AI — All rights reserved
+        © {new Date().getFullYear()} PrioVex — All rights reserved
       </footer>
     </div>
   );

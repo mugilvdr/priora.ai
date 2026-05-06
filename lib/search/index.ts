@@ -47,6 +47,46 @@ interface QueryLogEntry {
   query: string;
 }
 
+const PATENT_SOURCE_KEYWORDS = ['USPTO', 'PatentsView', 'EPO', 'Espacenet', 'PatentScope', 'Google Patents', 'Direct Lookup', 'Backward Citation', 'WIPO', 'patent'];
+
+function isPatentSource(source: string): boolean {
+  const lower = source.toLowerCase();
+  return PATENT_SOURCE_KEYWORDS.some((k) => lower.includes(k.toLowerCase()));
+}
+
+function buildPatentSourcesMd(results: UnifiedResult[]): string {
+  const patents = results.filter((r) => isPatentSource(r.source));
+  if (patents.length === 0) return '_No patent prior art results found._';
+
+  const rows = patents.map((r, i) => {
+    const num = (r.patentNumber || r.id || '—').replace(/\|/g, '');
+    const title = (r.title || 'Untitled').replace(/\|/g, '').substring(0, 80);
+    const assignee = (r.assignee || '—').replace(/\|/g, '').substring(0, 40);
+    const date = (r.date || r.year || '—').replace(/\|/g, '');
+    const source = (r.source || '').replace(/\|/g, '');
+    const link = r.url ? `[${title}](${r.url})` : title;
+    return `| ${i + 1} | ${link} | ${num} | ${assignee} | ${date} | ${source} |`;
+  });
+
+  return `## Patent Prior Art (${patents.length} results)\n\n| # | Title | Patent No. | Assignee | Date | Source |\n|---|-------|-----------|----------|------|--------|\n${rows.join('\n')}`;
+}
+
+function buildNPLSourcesMd(results: UnifiedResult[]): string {
+  const npls = results.filter((r) => !isPatentSource(r.source));
+  if (npls.length === 0) return '_No non-patent literature results found._';
+
+  const rows = npls.map((r, i) => {
+    const title = (r.title || 'Untitled').replace(/\|/g, '').substring(0, 80);
+    const authors = (r.authors || r.assignee || '—').replace(/\|/g, '').substring(0, 50);
+    const year = (r.year || r.date || '—').replace(/\|/g, '');
+    const source = (r.source || '').replace(/\|/g, '');
+    const link = r.url ? `[${title}](${r.url})` : title;
+    return `| ${i + 1} | ${link} | ${authors} | ${year} | ${source} |`;
+  });
+
+  return `## Non-Patent Literature (${npls.length} results)\n\n| # | Title | Authors | Year | Source |\n|---|-------|---------|------|--------|\n${rows.join('\n')}`;
+}
+
 function compactQuery(parts: Array<string | undefined>, maxTerms = 10): string {
   const seen = new Set<string>();
   const terms: string[] = [];
@@ -553,8 +593,11 @@ export async function runBackgroundSearch(
     await updateSearchProgress(searchId, 95, undefined, 'Saving report to database...');
 
     // ── Step 8: Save ─────────────────────────────────────────────────────────
+    const patentSourcesMd = buildPatentSourcesMd(withSnippets);
+    const nplSourcesMd = buildNPLSourcesMd(withSnippets);
+
     await prisma.report.create({
-      data: { searchId, patentabilityMd: patentabilityReport, clientReportMd: clientReport, referencesFound, patentabilityRating: rating },
+      data: { searchId, patentabilityMd: patentabilityReport, clientReportMd: clientReport, patentSourcesMd, nplSourcesMd, referencesFound, patentabilityRating: rating },
     });
 
     await prisma.search.update({

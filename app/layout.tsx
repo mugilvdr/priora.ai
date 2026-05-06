@@ -13,20 +13,20 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Priora.AI — AI Prior Art Search',
+  title: 'PrioVex — AI Prior Art Search',
   description:
     'Comprehensive prior art search across USPTO, EPO, WIPO, arXiv and more. Instant AI-generated patentability reports for inventors and IP professionals.',
-  keywords: ['patent search', 'prior art', 'patentability', 'USPTO', 'EPO', 'WIPO', 'priora', 'AI patent search'],
+  keywords: ['patent search', 'prior art', 'patentability', 'USPTO', 'EPO', 'WIPO', 'priovex', 'AI patent search'],
   openGraph: {
-    title: 'Priora.AI — AI Prior Art Search',
+    title: 'PrioVex — AI Prior Art Search',
     description: 'AI-powered prior art search across 20+ patent databases. Generate professional patentability reports in minutes.',
     type: 'website',
-    url: 'https://priora-ai.vercel.app',
-    siteName: 'Priora.AI',
+    url: 'https://priovex.vercel.app',
+    siteName: 'PrioVex',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Priora.AI — AI Prior Art Search',
+    title: 'PrioVex — AI Prior Art Search',
     description: 'AI-powered prior art search across 20+ patent databases.',
   },
 };

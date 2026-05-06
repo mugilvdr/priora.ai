@@ -46,6 +46,8 @@ model Report {
   search              Search   @relation(fields: [searchId], references: [id])
   patentabilityMd     String   @db.Text
   clientReportMd      String   @db.Text
+  patentSourcesMd     String?  @db.Text
+  nplSourcesMd        String?  @db.Text
   referencesFound     Int      @default(0)
   patentabilityRating String   @default("PENDING")
   createdAt           DateTime @default(now())

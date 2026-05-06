@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { UserButton, useUser } from '@clerk/nextjs';
 import { clsx } from 'clsx';
@@ -24,10 +25,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
         {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2.5 flex-shrink-0">
-          <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-xs">P</span>
-          </div>
-          <span className="font-bold text-base text-white tracking-tight">Priora.AI</span>
+          <Image src="/priovex-logo.png" alt="PrioVex" width={110} height={28} className="object-contain" />
         </Link>
 
         {/* Nav Links */}
