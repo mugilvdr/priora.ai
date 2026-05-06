@@ -29,7 +29,7 @@ export async function searchPatentsView(
       'cpc_subgroup_id',
     ]);
 
-    const options = JSON.stringify({ size: 10 });
+    const options = JSON.stringify({ size: 15 });
     const q = encodeURIComponent(JSON.stringify(queryObj));
     const f = encodeURIComponent(fields);
     const o = encodeURIComponent(options);

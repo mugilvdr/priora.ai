@@ -25,6 +25,9 @@ model Search {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   report       Report?
+
+  @@index([userId, createdAt])
+  @@index([status])
 }
 
 model UserOverride {
@@ -56,4 +59,6 @@ model AuditLog {
   targetUserId String?
   details      String?  @db.Text
   createdAt    DateTime @default(now())
+
+  @@index([adminId, createdAt])
 }

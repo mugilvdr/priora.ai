@@ -153,7 +153,10 @@ function extractPatentReferences(text: string, source: string, baseUrl: string):
     }
   }
 
-  return results.slice(0, 10);
+  // Strip low-quality placeholder entries (generic titles or near-empty abstracts)
+  return results
+    .filter((r) => r.title !== 'Patent Reference' && !/^Patent [A-Z]{2}/.test(r.title) && r.abstract.length > 60)
+    .slice(0, 10);
 }
 
 function buildPatentUrl(patentNum: string, baseUrl: string): string {

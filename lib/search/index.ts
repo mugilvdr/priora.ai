@@ -21,6 +21,7 @@ import { findObviousnessPairs, formatPairsForPrompt } from '@/lib/analysis/obvio
 import type { AIModel } from '@/lib/llm/providers';
 import { isEmbeddingAvailable, generateEmbedding, generateEmbeddings, computeVectorScores } from './embeddings';
 import { searchEPOOPS, isEPOOPSAvailable } from './epo-ops';
+import { searchUSPTOGrants, searchUSPTOApplications, searchUSPTOClaims } from './uspto';
 
 export type { WebSearchProvider };
 
@@ -207,6 +208,64 @@ function dedup(results: UnifiedResult[]): UnifiedResult[] {
   return out;
 }
 
+// ── Direct patent number lookup ────────────────────────────────────────────────
+
+function extractMentionedPatentNumbers(text: string): string[] {
+  const patterns = [
+    /\bUS\s*(20\d{8}(?:[A-Z]\d?)?)\b/gi,
+    /\bUS\s*(\d{7,8}(?:[A-Z]\d?)?)\b/gi,
+    /\bEP\s*(\d{6,8}(?:[A-Z]\d?)?)\b/gi,
+    /\bWO\s*(\d{4}\/\d{6})\b/gi,
+  ];
+  const seen = new Set<string>();
+  for (const re of patterns) {
+    let m: RegExpExecArray | null;
+    re.lastIndex = 0;
+    while ((m = re.exec(text)) !== null) {
+      seen.add(m[0].replace(/\s+/g, '').toUpperCase());
+    }
+  }
+  return Array.from(seen).slice(0, 3);
+}
+
+async function fetchDirectPatents(patentNumbers: string[]): Promise<UnifiedResult[]> {
+  const out: UnifiedResult[] = [];
+  await Promise.allSettled(
+    patentNumbers.map(async (pn) => {
+      try {
+        const num = pn.replace(/^US/i, '').replace(/[^0-9A-Z]/g, '');
+        const q = encodeURIComponent(JSON.stringify({ patent_number: num }));
+        const f = encodeURIComponent(JSON.stringify([
+          'patent_number', 'patent_title', 'patent_abstract',
+          'patent_date', 'assignee_organization', 'inventor_last_name', 'cpc_subgroup_id',
+        ]));
+        const res = await fetch(
+          `https://search.patentsview.org/api/v1/patent/?q=${q}&f=${f}`,
+          { headers: { Accept: 'application/json', 'User-Agent': 'Priora.AI-PatentSearch/1.0' }, signal: AbortSignal.timeout(8000) }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        const p = data?.patents?.[0];
+        if (!p) return;
+        out.push({
+          id: p.patent_number ?? pn,
+          title: p.patent_title ?? 'Untitled',
+          abstract: p.patent_abstract ?? '',
+          assignee: Array.isArray(p.assignee_organization) ? p.assignee_organization.join('; ') : (p.assignee_organization ?? 'N/A'),
+          inventors: Array.isArray(p.inventor_last_name) ? p.inventor_last_name.join('; ') : (p.inventor_last_name ?? 'N/A'),
+          date: p.patent_date ?? '',
+          type: 'Patent Grant',
+          source: 'Direct Lookup',
+          patentNumber: `US${p.patent_number}`,
+          url: `https://patents.google.com/patent/US${p.patent_number}`,
+          cpcCodes: Array.isArray(p.cpc_subgroup_id) ? p.cpc_subgroup_id : [],
+        });
+      } catch { /* non-fatal */ }
+    })
+  );
+  return out;
+}
+
 export async function runBackgroundSearch(
   searchId: string,
   description: string,
@@ -316,13 +375,25 @@ export async function runBackgroundSearch(
         { source: 'EPO OPS (synonyms)', query: `ta any "${synonymQuery}"` },
       );
     }
+    queryLog.push(
+      { source: 'USPTO Grants (keywords)', query: keywordQuery },
+      { source: 'USPTO Grants (novel)', query: novelQuery },
+      { source: 'USPTO Applications (claims)', query: claimQuery },
+      { source: 'USPTO Claims (direct)', query: `ACLM:(${claimQuery})` },
+    );
+
+    // Kick off direct patent lookup in parallel (for any patent numbers mentioned in description)
+    const mentionedPatents = extractMentionedPatentNumbers(description);
+    const directLookupPromise = mentionedPatents.length > 0
+      ? fetchDirectPatents(mentionedPatents)
+      : Promise.resolve([] as UnifiedResult[]);
 
     // ── Step 3: parallel patent + academic API searches ─────────────────────
     const epoActive = isEPOOPSAvailable();
-    const totalSources = 14 + (epoActive ? 4 : 0);
+    const totalSources = 18 + (epoActive ? 4 : 0);
     await updateSearchProgress(
       searchId, 28, undefined,
-      `Searching ${totalSources} sources in parallel: PatentsView${epoActive ? ', EPO OPS' : ''}, Google Patents, USPTO & more...`
+      `Searching ${totalSources} sources in parallel: PatentsView, USPTO${epoActive ? ', EPO OPS' : ''}, Google Patents & more...`
     );
 
     const directResults = await Promise.allSettled([
@@ -340,6 +411,11 @@ export async function runBackgroundSearch(
       searchSemanticScholar(keywordQuery),
       searchOpenAlex(keywordQuery),
       searchOpenAlex(claimQuery),
+      // USPTO full-text API — grants, applications, and claims-field search (no key required)
+      searchUSPTOGrants(keywordQuery, 10, 'USPTO Grants - keywords'),
+      searchUSPTOGrants(novelQuery, 10, 'USPTO Grants - novel'),
+      searchUSPTOApplications(claimQuery, 10, 'USPTO Applications - claims'),
+      searchUSPTOClaims(claimQuery, 8, 'USPTO Claims - direct'),
       // EPO OPS — structured API search across EP, WO, US, CN, JP (worldwide coverage)
       ...(epoActive ? [
         searchEPOOPS(keywordQuery, undefined, 'EPO OPS - keywords'),
@@ -376,7 +452,8 @@ export async function runBackgroundSearch(
     await updateSearchProgress(searchId, 60, undefined, 'Consolidating and ranking all results...');
 
     // ── Step 5: Consolidate, dedup, rank ──────────────────────────────────────
-    const allResultsRaw: UnifiedResult[] = [...directFlat, ...epoStep4];
+    const directLookupResults = await directLookupPromise;
+    const allResultsRaw: UnifiedResult[] = [...directFlat, ...epoStep4, ...directLookupResults];
     for (const settled of [webBatch1, webBatch2]) {
       if (settled.status === 'fulfilled') allResultsRaw.push(...settled.value);
     }
